@@ -1,17 +1,16 @@
-
+// File: server_handler.rs
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::connection::ServerConnection;
 use std::io::Result;
 
 pub struct ServerHandler {
-
-    connection: Arc<Mutex<ServerConnection>>,
+    connection: Arc<Mutex<dyn ServerConnection + Send>>,
 } 
 impl ServerHandler  {
-    pub fn new(connection: ServerConnection) -> Self {
+    pub fn new(connection: Arc<Mutex<dyn ServerConnection + Send>>) -> Self {
         ServerHandler {
-            connection: Arc::new(Mutex::new(connection)),
+            connection,
         }
     }
     pub async fn send_move_request(&self, from: (usize, usize), to: (usize, usize)) -> Result<()> {
@@ -20,5 +19,9 @@ impl ServerHandler  {
         let mut connection = self.connection.lock().await;
         connection.send(&message)?;
         Ok(())
+    }
+    pub async fn receive(&self) -> Result<String> {
+        let mut connection = self.connection.lock().await;
+        connection.receive()
     }
 }

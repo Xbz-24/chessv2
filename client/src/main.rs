@@ -1,4 +1,4 @@
-
+// File: main.rs
 mod connection;
 mod server_handler;
 mod game_interface;
@@ -8,22 +8,15 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use crate::game_interface::GameInterface;
 use crate::connection::ServerConnection;
-
-fn main() {
+use crate::game_logic_proxy::GameLogicProxy;
+use crate::server_handler::ServerHandler;
+#[tokio::main]
+async fn main() {
     // Create a new connection to the server
-    let server_connection_result = connection::ServerConnection::new("127.0.0.1:8080");
-
-    // Handle the result of creating the server connection
-    match server_connection_result {
-        Ok(server_connection) => {
-            // Start the game interface
-            let game_interface = game_interface::GameInterface::new();
-            game_interface.start(server_connection);
-        }
-        Err(error) => {
-            eprintln!("Failed to create server connection: {}", error);
-            // Handle the error gracefully, e.g., by displaying an error message or exiting the program
-        }
-    }
+    let server_connection = Arc::new(Mutex::new(ServerConnection::new("127.0.0.1:8080").expect("Failed to connect to server")));
+    let server_handler = Arc::new(Mutex::new(ServerHandler::new(server_connection.clone())));
+    let game_interface = GameInterface::new(server_handler.clone());
+    let game_logic_proxy = Arc::new(Mutex::new(GameLogicProxy::new(server_handler, game_interface)));
+    game_logic_proxy.start().await.unwrap();
 }
 
